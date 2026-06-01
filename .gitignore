@@ -23,6 +23,8 @@ backend/.venv/
 backend/venv/
 backend/env/
 
+backend/uploads/
+
 # Python testing / tooling
 .pytest_cache/
 .mypy_cache/
