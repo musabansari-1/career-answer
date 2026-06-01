@@ -1,6 +1,7 @@
 import fitz
 from app.models.chunk import Chunk
 from app.models.document import Document
+from app.services.embeddings import create_embedding
 
 
 def extract_text(file_path: str):
@@ -27,9 +28,12 @@ def process_document(file_path: str, db):
     db.refresh(document)
 
     for c in chunks:
+        embedding = create_embedding(c)
+
         chunk = Chunk(
             document_id=document.id,
-            content=c
+            content=c,
+            embedding=embedding
         )
         db.add(chunk)
 
