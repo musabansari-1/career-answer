@@ -1,6 +1,9 @@
-import fitz  # PyMuPDF
+import fitz
+from app.models.chunk import Chunk
+from app.models.document import Document
 
-def extract_text(file_path: str) -> str:
+
+def extract_text(file_path: str):
     doc = fitz.open(file_path)
     text = ""
 
@@ -10,16 +13,26 @@ def extract_text(file_path: str) -> str:
     return text
 
 
-def chunk_text(text: str, chunk_size: int = 1000):
-    return [
-        text[i:i + chunk_size]
-        for i in range(0, len(text), chunk_size)
-    ]
+def chunk_text(text: str, size: int = 1000):
+    return [text[i:i+size] for i in range(0, len(text), size)]
 
 
-def process_document(file_path: str):
+def process_document(file_path: str, db):
     text = extract_text(file_path)
     chunks = chunk_text(text)
 
-    # for now just return chunks (NO DB yet)
+    document = Document(filename=file_path)
+    db.add(document)
+    db.commit()
+    db.refresh(document)
+
+    for c in chunks:
+        chunk = Chunk(
+            document_id=document.id,
+            content=c
+        )
+        db.add(chunk)
+
+    db.commit()
+
     return chunks
