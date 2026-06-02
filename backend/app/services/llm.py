@@ -1,0 +1,56 @@
+import os
+import requests
+
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+
+def build_prompt(question: str, chunks: list[str]) -> str:
+    context = "\n\n".join(chunks)
+
+    return f"""
+You are a helpful AI assistant.
+
+Answer ONLY using the context below.
+
+If context is insufficient, say "I don't know".
+
+Context:
+{context}
+
+Question:
+{question}
+
+Answer:
+""".strip()
+
+
+def generate_answer(prompt: str) -> str:
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": "openai/gpt-oss-20b:free",  # you can change anytime
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are a strict assistant that answers only from provided context."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    }
+
+    response = requests.post(OPENROUTER_URL, headers=headers, json=payload)
+
+    if response.status_code != 200:
+        raise Exception(f"OpenRouter error: {response.text}")
+
+    data = response.json()
+
+    return data["choices"][0]["message"]["content"]
