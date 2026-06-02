@@ -2,41 +2,50 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.schemas.chat import ChatRequest, ChatResponse
-from app.services.search import search_chunks
-from app.services.llm import build_prompt, generate_answer
+from app.schemas.chat import (
+    ChatSessionOut,
+    ChatSessionMessagesOut,
+    ChatMessageIn
+)
+from app.services.chat import (
+    create_session,
+    get_sessions,
+    get_messages,
+    chat_with_rag
+)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
-@router.post("/", response_model=ChatResponse)
-def chat(req: ChatRequest, db: Session = Depends(get_db)):
-    # 1. semantic search
-    results = search_chunks(req.message, db, limit=5)
-    chunks = [r[0].content for r in results]
+# CREATE SESSION
+@router.post("/session", response_model=ChatSessionOut)
+def new_session(db: Session = Depends(get_db)):
+    return create_session(db)
 
-    # 2. build conversation context
-    history_text = "\n".join(
-        [f"{m.role}: {m.content}" for m in req.history]
-    )
 
-    # 3. build prompt
-    prompt = f"""
-You are a helpful assistant.
+# GET ALL SESSIONS
+@router.get("/sessions", response_model=list[ChatSessionOut])
+def sessions(db: Session = Depends(get_db)):
+    return get_sessions(db)
 
-Conversation history:
-{history_text}
 
-Context from documents:
-{chr(10).join(chunks)}
+# GET MESSAGES
+@router.get("/session/{session_id}", response_model=ChatSessionMessagesOut)
+def session_messages(session_id: str, db: Session = Depends(get_db)):
+    messages = get_messages(db, session_id)
 
-User message:
-{req.message}
+    return {
+        "session_id": session_id,
+        "messages": messages
+    }
 
-Answer clearly and concisely.
-"""
 
-    # 4. generate response
-    answer = generate_answer(prompt)
-
+# SEND MESSAGE (RAG CORE)
+@router.post("/session/{session_id}/message")
+def send_message(
+    session_id: str,
+    req: ChatMessageIn,
+    db: Session = Depends(get_db)
+):
+    answer = chat_with_rag(db, session_id, req.message)
     return {"answer": answer}
