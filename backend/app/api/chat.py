@@ -41,11 +41,17 @@ def session_messages(session_id: str, db: Session = Depends(get_db)):
 
 
 # SEND MESSAGE (RAG CORE)
+# @router.post("/session/{session_id}/message")
+# def send_message(
+#     session_id: str,
+#     req: ChatMessageIn,
+#     db: Session = Depends(get_db)
+# ):
+#     answer = chat_with_rag(db, session_id, req.message)
+#     return {"answer": answer}
 @router.post("/session/{session_id}/message")
-def send_message(
-    session_id: str,
-    req: ChatMessageIn,
-    db: Session = Depends(get_db)
-):
-    answer = chat_with_rag(db, session_id, req.message)
-    return {"answer": answer}
+def send_message(session_id: str, req: ChatMessageIn, db: Session = Depends(get_db)):
+
+    result = chat_with_rag(db, session_id, req.message)
+
+    return result
