@@ -33,7 +33,7 @@ def generate_answer(prompt: str) -> str:
     }
 
     payload = {
-        "model": "openai/gpt-oss-20b:free",  # you can change anytime
+        "model": "openrouter/free",  # you can change anytime
         "messages": [
             {
                 "role": "system",
