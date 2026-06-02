@@ -37,39 +37,46 @@ def add_message(db: Session, session_id: str, role: str, content: str):
 
 
 def chat_with_rag(db: Session, session_id: str, user_message: str):
-    # 1. store user message
+
     add_message(db, session_id, "user", user_message)
 
-    # 2. semantic search
     results = search_chunks(user_message, db, limit=5)
-    context = "\n".join([r[0].content for r in results])
 
-    # 3. get chat history
+    chunks = [
+        {
+            "content": r[0].content,
+            "score": float(r[1])
+        }
+        for r in results
+    ]
+
+    context = "\n".join([c["content"] for c in chunks])
+
     history = get_messages(db, session_id)
     history_text = "\n".join(
         [f"{m.role}: {m.content}" for m in history]
     )
 
-    # 4. prompt
     prompt = f"""
-You are an AI assistant for answering questions based on documents.
+You are a helpful assistant.
 
-Conversation:
-{history_text}
+Use ONLY the context below.
 
 Context:
 {context}
 
-User:
-{user_message}
+Conversation:
+{history_text}
 
+User: {user_message}
 Answer clearly and concisely.
 """
 
-    # 5. LLM response
     answer = generate_answer(prompt)
 
-    # 6. store assistant message
     add_message(db, session_id, "assistant", answer)
 
-    return answer
+    return {
+        "answer": answer,
+        "sources": chunks
+    }
