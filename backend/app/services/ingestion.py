@@ -2,6 +2,8 @@ import fitz
 from app.models.chunk import Chunk
 from app.models.document import Document
 from app.services.embeddings import create_embedding
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
 
 
 def extract_text(file_path: str):
@@ -14,8 +16,22 @@ def extract_text(file_path: str):
     return text
 
 
-def chunk_text(text: str, size: int = 1000):
-    return [text[i:i+size] for i in range(0, len(text), size)]
+def chunk_text(text: str):
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=800,
+        chunk_overlap=150,
+        separators=[
+            "\n\n",
+            "\n",
+            ". ",
+            " ",
+            ""
+        ],
+    )
+
+    chunks = splitter.split_text(text)
+
+    return chunks
 
 
 def process_document(file_path: str, db):
