@@ -260,48 +260,134 @@ export default function ChatWindow({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // const sendMessage = async () => {
+  //   if (!input.trim() || !sessionId) return;
+
+  //   const userMsg: Message = { role: "user", content: input };
+  //   const updated = [...messages, userMsg];
+
+  //   setMessages(updated);
+  //   setInput("");
+  //   setLoading(true);
+
+  //   try {
+  //     const res = await fetch(
+  //       `http://localhost:8000/chat/session/${sessionId}/message`,
+  //       {
+  //         method: "POST",
+  //         headers: { "Content-Type": "application/json" },
+  //         body: JSON.stringify({ message: input }),
+  //       }
+  //     );
+
+  //     const data = await res.json();
+
+  //     const assistantMsg: Message = {
+  //       role: "assistant",
+  //       content: data.answer,
+  //       sources: data.sources || [],
+  //       showSources: false, // collapsed by default
+  //     };
+
+  //     setMessages([...updated, assistantMsg]);
+  //   } catch (err) {
+  //     setMessages([
+  //       ...updated,
+  //       {
+  //         role: "assistant",
+  //         content: "Something went wrong. Please try again.",
+  //       },
+  //     ]);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+
   const sendMessage = async () => {
-    if (!input.trim() || !sessionId) return;
+  if (!input.trim() || !sessionId) return;
 
-    const userMsg: Message = { role: "user", content: input };
-    const updated = [...messages, userMsg];
+  const userMsg: Message = {
+    role: "user",
+    content: input,
+  };
 
-    setMessages(updated);
-    setInput("");
-    setLoading(true);
+  const updated = [...messages, userMsg];
 
-    try {
-      const res = await fetch(
-        `http://localhost:8000/chat/session/${sessionId}/message`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: input }),
-        }
-      );
+  setMessages(updated);
 
-      const data = await res.json();
+  const messageText = input;
 
-      const assistantMsg: Message = {
-        role: "assistant",
-        content: data.answer,
-        sources: data.sources || [],
-        showSources: false, // collapsed by default
-      };
+  setInput("");
+  setLoading(true);
 
-      setMessages([...updated, assistantMsg]);
-    } catch (err) {
+  try {
+    const res = await fetch(
+      `http://localhost:8000/chat/session/${sessionId}/stream`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: messageText,
+        }),
+      }
+    );
+
+    if (!res.ok) {
+      throw new Error("Failed to stream response");
+    }
+
+    if (!res.body) {
+      throw new Error("Response body is missing");
+    }
+
+    // Add empty assistant message immediately
+    // setMessages([
+    //   ...updated,
+    //   {
+    //     role: "assistant",
+    //     content: "",
+    //   },
+    // ]);
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+
+    let assistantText = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+
+      if (done) break;
+
+      const chunk = decoder.decode(value, {
+        stream: true,
+      });
+      setLoading(false);
+      assistantText += chunk;
+
       setMessages([
         ...updated,
         {
           role: "assistant",
-          content: "Something went wrong. Please try again.",
+          content: assistantText,
         },
       ]);
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (err) {
+    setMessages([
+      ...updated,
+      {
+        role: "assistant",
+        content: "Something went wrong. Please try again.",
+      },
+    ]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="flex-1 flex flex-col bg-gray-900">
