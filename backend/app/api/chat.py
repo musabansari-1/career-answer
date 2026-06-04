@@ -52,6 +52,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from fastapi.responses import StreamingResponse
 
 from app.db.session import get_db
 from app.schemas.chat import (
@@ -64,7 +65,8 @@ from app.services.chat import (
     create_session,
     get_sessions,
     get_messages,
-    chat_with_rag
+    chat_with_rag,
+    stream_chat_with_rag
 )
 
 from app.models.chat import ChatSession, ChatMessage
@@ -112,6 +114,23 @@ def send_message(
 ):
     result = chat_with_rag(db, session_id, req.message)
     return result
+
+
+@router.post("/session/{session_id}/stream")
+def stream_message(
+    session_id: str,
+    req: ChatMessageIn,
+    db: Session = Depends(get_db),
+):
+    print("STREAM ENDPOINT HIT")
+    return StreamingResponse(
+        stream_chat_with_rag(
+            db,
+            session_id,
+            req.message,
+        ),
+        media_type="text/plain",
+    )
 
 
 # =====================================================
